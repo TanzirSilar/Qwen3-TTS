@@ -1,0 +1,122 @@
+# Qwen3-TTS Talker LLM Configuration
+# Main transformer for speech code generation
+
+# Model Architecture
+model:
+  # LLM Backbone
+  vocab_size: 151936
+  hidden_size: 4096
+  intermediate_size: 22016
+  num_hidden_layers: 32
+  num_attention_heads: 32
+  num_key_value_heads: 32
+  head_dim: 128
+
+  # Positional Embeddings
+  max_position_embeddings: 2048
+  rope_theta: 10000.0
+  rope_scaling:
+    type: "dynamic"
+    factor: 1.0
+
+  # Activation & Norm
+  hidden_act: silu
+  rms_norm_eps: 1e-6
+
+  # Speech Specific
+  num_codebooks: 16
+  codebook_size: 2048
+  speaker_embedding_dim: 1024
+
+# Training Parameters
+training:
+  batch_size: 32              # Per GPU
+  learning_rate: 2e-5
+  num_epochs: 10
+  warmup_ratio: 0.1           # 10% of total steps
+  max_grad_norm: 1.0
+  weight_decay: 0.01
+
+  # Gradient Accumulation
+  gradient_accumulation_steps: 4
+  max_steps: -1               # -1 for full training
+
+  # Scheduler
+  scheduler_type: cosine_with_warmup
+
+# Loss Weights
+losses:
+  codec_0_weight: 1.0         # Main codec prediction
+  sub_codec_weight: 0.3       # Auxiliary codecs (1-15)
+  attention_loss_weight: 0.0  # Optional regularization
+
+# Data
+data:
+  max_seq_length: 2048
+  min_audio_length: 1.0       # seconds
+  max_audio_length: 20.0
+  min_text_length: 1
+  max_text_length: 200
+  num_workers: 8
+  pin_memory: true
+  prefetch_factor: 2
+
+# Data Augmentation
+augmentation:
+  code_masking: false         # Mask some codes during training
+  code_masking_ratio: 0.1
+  dropout: 0.1
+
+# Optimization
+optimization:
+  optimizer: adamw
+  betas: [0.9, 0.95]
+  eps: 1e-8
+
+# Checkpointing
+checkpoint:
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 5
+  resume_from: null
+
+  # For resuming pre-tokenized data
+  cache_tokenized_data: true
+
+# Logging
+logging:
+  log_level: info
+  log_frequency: 10
+  use_tensorboard: true
+  use_wandb: false
+  wandb_project: qwen3-tts-talker-lm
+
+# Hardware
+hardware:
+  mixed_precision: bf16
+  gradient_checkpointing: true
+  use_flash_attention_2: true
+  num_gpus: 8
+
+# Validation
+validation:
+  compute_loss: true
+  compute_wer: false          # Requires ASR model (slow)
+  compute_speaker_similarity: false
+  num_val_batches: -1         # -1 for full validation set
+
+# Generation (for testing)
+generation:
+  max_new_tokens: 1024
+  temperature: 1.0
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.0
+
+# Seed
+seed: 42
+
+# Pre-trained Checkpoints (if available)
+pretrained:
+  tokenizer_checkpoint: null  # null to train fresh
+  speaker_encoder_checkpoint: null

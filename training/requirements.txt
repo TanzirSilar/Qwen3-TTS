@@ -1,0 +1,38 @@
+# Qwen3-TTS From-Scratch Training Requirements
+
+# Core
+torch>=2.4.0
+transformers>=4.42.0
+accelerate>=0.33.0
+
+# Audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+julius>=0.2.7
+torchaudio>=2.4.0
+
+# Data handling
+numpy>=1.24.0
+scipy>=1.11.0
+pandas>=2.0.0
+pyyaml>=6.0
+
+# Optimization & Scheduling
+torch-optim-extra>=0.0.1
+
+# Logging & Monitoring
+tensorboard>=2.14.0
+wandb>=0.16.0
+
+# Utilities
+tqdm>=4.66.0
+pydantic>=2.0.0
+
+# Optional but recommended
+flash-attn>=2.4.0  # For efficient attention
+einops>=0.7.0     # For tensor operations
+
+# Development (optional)
+pytest>=7.4.0
+black>=23.0.0
+isort>=5.12.0

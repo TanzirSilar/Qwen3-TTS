@@ -1,0 +1,32 @@
+# Qwen3-TTS Training Configuration
+# This file defines default training hyperparameters
+
+# Model and Data Paths
+init_model_path: "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+output_model_path: "output"
+train_jsonl: "train_with_codes.jsonl"
+val_jsonl: null  # Optional validation set
+
+# Training Parameters
+batch_size: 2
+learning_rate: 2e-5
+num_epochs: 3
+speaker_name: "speaker_test"
+
+# Optimization
+warmup_ratio: 0.1
+max_grad_norm: 1.0
+weight_decay: 0.01
+gradient_accumulation_steps: 4
+optimizer_betas: [0.9, 0.95]
+
+# Checkpointing
+save_steps: 500
+eval_steps: 500
+save_total_limit: 5
+
+# Advanced Settings
+mixed_precision: "bf16"
+attn_implementation: "flash_attention_2"
+seed: 42
+max_seq_length: 2048

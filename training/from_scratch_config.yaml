@@ -1,0 +1,107 @@
+# Master Configuration for Full From-Scratch Training Pipeline
+
+# Data Directories
+data:
+  tokenizer_raw: datasets/tokenizer_data/raw_audio
+  speaker_encoder_raw: datasets/speaker_encoder_data/raw_audio
+  talker_lm_raw: datasets/talker_lm_data/raw_audio
+  talker_lm_text: datasets/talker_lm_data/transcriptions
+
+# Output Directories
+output:
+  tokenizer_checkpoint: checkpoints/tokenizer
+  speaker_encoder_checkpoint: checkpoints/speaker_encoder
+  talker_lm_checkpoint: checkpoints/talker_lm
+  logs: logs
+
+# Phase 0: Data Preparation
+data_preparation:
+  enabled: true
+  tokenizer:
+    output_manifest: datasets/tokenizer_data/manifests
+    train_split: 0.9
+    val_split: 0.1
+  speaker_encoder:
+    output_manifest: datasets/speaker_encoder_data/manifests
+    train_split: 0.8
+    val_split: 0.2
+    min_speakers: 100  # Minimum speakers required
+  talker_lm:
+    output_manifest: datasets/talker_lm_data/manifests
+    train_split: 0.8
+    val_split: 0.1
+    test_split: 0.1
+
+# Phase 1: Tokenizer Training
+tokenizer_training:
+  enabled: true
+  config: configs/tokenizer.yaml
+  num_gpus: 8
+  resume_from: null
+
+# Phase 2: Speaker Encoder Training
+speaker_encoder_training:
+  enabled: true
+  config: configs/speaker_encoder.yaml
+  num_gpus: 4
+  resume_from: null
+  depends_on: tokenizer_training  # Can train in parallel
+
+# Phase 3: Talker LLM Training
+talker_lm_training:
+  enabled: true
+  config: configs/talker_lm.yaml
+  num_gpus: 8
+  resume_from: null
+  depends_on:
+    - tokenizer_training
+    - speaker_encoder_training
+
+# Post-Training
+post_training:
+  evaluation:
+    enabled: true
+    eval_tokenizer: true
+    eval_speaker_encoder: true
+    eval_talker_lm: true
+
+  integration:
+    enabled: true
+    combine_components: true
+    package_as_hf_model: true
+    output_model_name: qwen3-tts-custom
+
+# Experiment Tracking
+tracking:
+  use_tensorboard: true
+  tensorboard_dir: logs
+  use_wandb: false
+  wandb_project: qwen3-tts-training
+  wandb_entity: null
+
+# Hardware
+hardware:
+  cuda_visible_devices: "0,1,2,3,4,5,6,7"
+  num_workers_per_dataloader: 4
+  pin_memory: true
+  deterministic: false
+  seed: 42
+
+# Logging
+logging:
+  log_level: INFO
+  log_to_file: true
+  log_format: standard
+
+# General Training Settings
+training:
+  mixed_precision: bf16
+  gradient_checkpointing: true
+  use_flash_attention: true
+  compile_model: false  # Experimental
+
+# Interruption & Resumption
+checkpointing:
+  save_frequency: 500
+  keep_checkpoints: 5
+  auto_resume: true
