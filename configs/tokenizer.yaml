@@ -1,83 +1,68 @@
-# Qwen3-TTS Tokenizer Configuration
-# VQ-VAE codec for speech compression
+# Phase 1: Qwen3-TTS 12Hz speech tokenizer (Qwen3TTSTokenizerV2Model) trained from scratch.
+# Architecture = the released Qwen/Qwen3-TTS-Tokenizer-12Hz config
+# (training/1_tokenizer_training/reference/tokenizer_12hz_config.json):
+#   24 kHz waveform -> Mimi encoder (causal SEANet + 8-layer transformer) -> 12.5 Hz latent
+#   -> split RVQ: 1 semantic + 15 acoustic codebooks x 2048 entries
+#   -> decoder: 8-layer sliding-window transformer + ConvNeXt upsample + SnakeBeta conv decoder -> 24 kHz
 
-# Audio Processing
+model:
+  arch_json: null          # null = reference/tokenizer_12hz_config.json
+  overrides: null          # e.g. {decoder_config: {num_hidden_layers: 2}} for quick experiments
+
 audio:
   sample_rate: 24000
-  num_mels: 128
-  n_fft: 1024
-  hop_size: 256
-  win_size: 1024
-  fmin: 0
-  fmax: 12000
 
-# Model Architecture
-model:
-  num_codebooks: 16
-  codebook_size: 2048
-  hidden_dim: 512
-  embedding_dim: 64
-  encoder_channels: [256, 512, 512]
-  decoder_channels: [512, 512, 256]
+quantizer:
+  decay: 0.99                    # EMA decay of codebooks
+  dead_code_threshold: 2.0       # codes with EMA usage below this are re-seeded from the batch
+  kmeans_iters: 10               # k-means init on the first batch
+  quantizer_dropout_prob: 0.5    # fraction of samples trained with a random number (0..15) of acoustic codebooks
 
-# Training Parameters
-training:
-  batch_size: 32
-  learning_rate: 1e-4
-  num_epochs: 100
-  warmup_steps: 10000
-  max_grad_norm: 1.0
-  weight_decay: 0.01
+discriminator:
+  periods: [2, 3, 5, 7, 11]
+  stft_n_ffts: [2048, 1024, 512, 256, 128]
 
-  # Scheduler
-  scheduler_type: cosine
-  num_warmup_steps: 10000
-
-# Loss Weights
 losses:
-  reconstruction_weight: 1.0
-  commitment_weight: 0.25
-  adversarial_weight: 0.1  # Set to 0 to disable
+  mel_weight: 15.0
+  commit_weight: 1.0
+  adv_weight: 1.0
+  fm_weight: 2.0
+  semantic_distill:
+    enabled: true
+    teacher: microsoft/wavlm-large   # frozen SSL teacher for codebook 0 (swap for a multilingual one if needed)
+    layer: -1                         # hidden_states index used as target
+    weight: 1.0
 
-# Data
-data:
-  min_audio_length: 1.0    # seconds
-  max_audio_length: 20.0
-  num_workers: 4
-  pin_memory: true
-
-# Optimization
-optimization:
-  optimizer: adamw
-  betas: [0.9, 0.95]
-  eps: 1e-8
-
-# Checkpointing
-checkpoint:
-  save_steps: 500
-  eval_steps: 500
-  save_total_limit: 5
+training:
+  batch_size: 8              # per GPU
+  max_steps: 400000
+  lr_g: 2.0e-4
+  lr_d: 2.0e-4
+  betas: [0.8, 0.99]
+  weight_decay: 0.0
+  warmup_steps: 2000
+  min_lr_ratio: 0.1
+  max_grad_norm: 1.0
+  disc_start_step: 5000      # reconstruction-only warm-up before the GAN kicks in
+  eval_steps: 2000
+  num_val_batches: 50
+  save_steps: 5000
+  keep_checkpoints: 3
+  auto_resume: true
   resume_from: null
 
-# Logging
-logging:
-  log_level: info
-  log_frequency: 10
-  use_tensorboard: true
-  use_wandb: false
-  wandb_project: qwen3-tts-tokenizer
+data:
+  segment_seconds: 3.84      # 48 codec frames; rounded to a multiple of 1920 samples
+  val_segment_seconds: 10.0
+  min_duration: 0.5
+  max_duration: 60.0
+  num_workers: 8
 
-# Hardware
 hardware:
   mixed_precision: bf16
-  gradient_checkpointing: false
-  num_gpus: 1  # Will be auto-detected
 
-# Validation
-validation:
-  compute_reconstruction_metrics: true
-  compute_codebook_usage: true
-  num_val_batches: -1  # -1 for full validation set
+logging:
+  log_every: 50
+  tensorboard: true
 
-# Seed
 seed: 42
